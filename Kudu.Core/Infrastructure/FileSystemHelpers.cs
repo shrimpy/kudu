@@ -255,6 +255,17 @@ namespace Kudu.Core.Infrastructure
             DeleteDirectoryContentsSafe(Instance.DirectoryInfo.FromDirectoryName(path), ignoreErrors);
         }
 
+        public static FileAttributes GetAttributes(string path)
+        {
+            return Instance.File.GetAttributes(path);
+        }
+
+        public static void MoveDirectory(string from, string to)
+        {
+            FileSystemHelpers.DeleteDirectorySafe(to);
+            Instance.Directory.Move(from, to);
+        }
+
         private static void DeleteDirectoryContentsSafe(DirectoryInfoBase directoryInfo, bool ignoreErrors)
         {
             try
