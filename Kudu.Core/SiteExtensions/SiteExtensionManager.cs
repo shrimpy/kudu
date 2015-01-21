@@ -27,7 +27,7 @@ using System.Threading;
 
 namespace Kudu.Core.SiteExtensions
 {
-    public class SiteExtensionManager : ISiteExtensionManager
+    public class SiteExtensionManager : ISiteExtensionManager, IDisposable
     {
         private readonly SourceRepository _localRepository;
         private readonly CompositionContainer _container;
@@ -273,7 +273,7 @@ namespace Kudu.Core.SiteExtensions
                 {
                     FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
                 }
-                
+
                 SourceRepository remoteRepo = this.GetSourceRepository(feedUrl);
 
                 // copy content folder
@@ -643,6 +643,21 @@ namespace Kudu.Core.SiteExtensions
             IEnumerable<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>> providers = this._container.GetExports<INuGetResourceProvider, INuGetResourceProviderMetadata>();
             NuGet.Configuration.PackageSource source = new NuGet.Configuration.PackageSource(feedEndpoint);
             return new SourceRepository(source, providers);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            // reference https://msdn.microsoft.com/en-us/library/ms244737.aspx
+            if (disposing && this._container != null)
+            {
+                this._container.Dispose();
+            }
         }
     }
 }
