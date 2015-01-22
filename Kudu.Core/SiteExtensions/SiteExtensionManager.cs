@@ -124,7 +124,7 @@ namespace Kudu.Core.SiteExtensions
         {
             var extensions = new List<SiteExtensionInfo>(GetPreInstalledExtensions(filter, showEnabledOnly: false));
 
-            SourceRepository remoteRepo = this.GetSourceRepository(feedUrl);
+            SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
 
             IEnumerable<UISearchMetadata> packages =
                 string.IsNullOrWhiteSpace(filter) ?     // TODO: investigate why we allow filter to be null, since it will take ages to query all the packages
@@ -147,7 +147,7 @@ namespace Kudu.Core.SiteExtensions
                 return info;
             }
 
-            SourceRepository remoteRepo = this.GetSourceRepository(feedUrl);
+            SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
             UIPackageMetadata package =
                 string.IsNullOrWhiteSpace(version) ?
                     await await remoteRepo.GetLatestPackageById(id) :
@@ -246,7 +246,7 @@ namespace Kudu.Core.SiteExtensions
                     feedUrl = GetSettingManager(id).GetValue(_feedUrlSetting);
                 }
 
-                SourceRepository remoteRepo = this.GetSourceRepository(feedUrl);
+                SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
                 UIPackageMetadata localPackage = null;
                 UIPackageMetadata repoPackage =
                     string.IsNullOrWhiteSpace(version) ?
@@ -274,7 +274,7 @@ namespace Kudu.Core.SiteExtensions
                     FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
                 }
 
-                SourceRepository remoteRepo = this.GetSourceRepository(feedUrl);
+                SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
 
                 // copy content folder
                 await remoteRepo.DownloadPackageToFolder(package.Identity, installationDirectory);
