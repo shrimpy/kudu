@@ -277,7 +277,7 @@ namespace Kudu.Core.SiteExtensions
                 SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
 
                 // copy content folder
-                await remoteRepo.DownloadPackageToFolder(package.Identity, installationDirectory);
+                await await remoteRepo.DownloadPackageToFolder(package.Identity, installationDirectory);
 
                 // If there is no xdt file, generate default.
                 GenerateApplicationHostXdt(installationDirectory, '/' + package.Identity.Id, isPreInstalled: false);

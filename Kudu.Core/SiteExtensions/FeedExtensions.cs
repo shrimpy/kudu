@@ -64,7 +64,7 @@ namespace Kudu.Core.SiteExtensions
                                       cancellationTokenSrc.Cancel();
                                       searchResult = null;
                                   }
-                              } while (searchResult != null && searchResult.Count() == take);
+                              } while (!cancellationTokenSrc.IsCancellationRequested && searchResult.Count() == take);
 
                               obs.OnCompleted();
                           }).ToEnumerable<UISearchMetadata>();
@@ -125,7 +125,7 @@ namespace Kudu.Core.SiteExtensions
         /// <summary>
         /// Helper function to download package from given url and place content (only 'content' folder from package) to given folder
         /// </summary>
-        public static Task DownloadPackageToFolder(this SourceRepository srcRepo, PackageIdentity identity, string localFolderPath)
+        public static Task<Task> DownloadPackageToFolder(this SourceRepository srcRepo, PackageIdentity identity, string localFolderPath)
         {
             return Task.Factory.StartNew<Task>(
                 async () =>
