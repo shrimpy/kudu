@@ -7,7 +7,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Kudu.Core</RootNamespace>
     <AssemblyName>Kudu.Core</AssemblyName>
-    <NuGetPackageImportStamp>7594ca1f</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>4ba3ba66</NuGetPackageImportStamp>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Mercurial.Net, Version=1.1.1.607, Culture=neutral, PublicKeyToken=9e2fabf3af85dba9, processorArchitecture=MSIL">
@@ -23,7 +23,7 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.6.0.6\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.6.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NuGet.Client, Version=1.1.0.0, Culture=neutral, PublicKeyToken=2e465378e3b1a8dd, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -56,6 +56,7 @@
     <Reference Include="NuGet.Core, Version=2.8.50926.602, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\NuGet.Core.2.8.3\lib\net40-Client\NuGet.Core.dll</HintPath>
+      <Aliases>nugetcore</Aliases>
     </Reference>
     <Reference Include="NuGet.Data, Version=1.0.1.0, Culture=neutral, PublicKeyToken=2e465378e3b1a8dd, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -77,7 +78,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\NuGet.Packaging.1.0.0-pre-20150120213149\lib\net45\NuGet.Resolver.dll</HintPath>
     </Reference>
-    <Reference Include="NuGet.Versioning">
+    <Reference Include="NuGet.Versioning, Version=1.0.6.0, Culture=neutral, PublicKeyToken=2e465378e3b1a8dd, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\NuGet.Versioning.1.0.6\lib\portable-net40+win\NuGet.Versioning.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -90,10 +92,12 @@
     </Reference>
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Net.Http" />
-    <Reference Include="System.Net.Http.Extensions">
+    <Reference Include="System.Net.Http.Extensions, Version=2.2.28.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.Net.Http.2.2.28\lib\net45\System.Net.Http.Extensions.dll</HintPath>
     </Reference>
-    <Reference Include="System.Net.Http.Primitives">
+    <Reference Include="System.Net.Http.Primitives, Version=4.2.28.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.Net.Http.2.2.28\lib\net45\System.Net.Http.Primitives.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http.WebRequest" />
@@ -329,9 +333,12 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Microsoft.Diagnostics.Tracing.EventRegister.1.0.26\build\Microsoft.Diagnostics.Tracing.EventRegister.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Diagnostics.Tracing.EventRegister.1.0.26\build\Microsoft.Diagnostics.Tracing.EventRegister.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets'))" />
   </Target>
-  <Import Project="..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" />
+  <Import Project="..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets" Condition="Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" />
+  <Target Name="EnsureBclBuildImported" BeforeTargets="BeforeBuild" Condition="'$(BclBuildImported)' == ''">
+    <Error Condition="!Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=317567." HelpKeyword="BCLBUILD2001" />
+    <Error Condition="Exists('..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="The build restored NuGet packages. Build the project again to include these packages in the build. For more information, see http://go.microsoft.com/fwlink/?LinkID=317568." HelpKeyword="BCLBUILD2002" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

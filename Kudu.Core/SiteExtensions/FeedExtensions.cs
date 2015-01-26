@@ -22,53 +22,52 @@ namespace Kudu.Core.SiteExtensions
         /// <summary>
         /// Query all result, will include pre-released package by default
         /// </summary>
-        public static Task<Task<IEnumerable<UISearchMetadata>>> Search(this SourceRepository srcRepo, string searchTerm, SearchFilter filter = null)
+        public static Task<IEnumerable<UISearchMetadata>> Search(this SourceRepository srcRepo, string searchTerm, SearchFilter filter = null)
         {
-            return Task.Factory.StartNew<Task<IEnumerable<UISearchMetadata>>>(
-                async () =>
-                {
-                    var searchResource = await srcRepo.GetResourceAsync<UISearchResource>();
+            return Task.Run<IEnumerable<UISearchMetadata>>(
+                 () =>
+                 {
+                     int skip = 0;
+                     int take = 1000;
 
-                    int skip = 0;
-                    int take = 1000;
+                     var cancellationTokenSrc = new CancellationTokenSource();
+                     IEnumerable<UISearchMetadata> searchResult = null;
 
-                    var cancellationTokenSrc = new CancellationTokenSource();
-                    IEnumerable<UISearchMetadata> searchResult = null;
+                     // always include pre-release package
+                     if (filter == null)
+                     {
+                         filter = new SearchFilter();
+                     }
 
-                    // always include pre-release package
-                    if (filter == null)
-                    {
-                        filter = new SearchFilter();
-                    }
+                     filter.IncludePrerelease = true;
 
-                    filter.IncludePrerelease = true;
+                     return Observable.Create<UISearchMetadata>(
+                           async obs =>
+                           {
+                               do
+                               {
+                                   try
+                                   {
+                                       var searchResource = await srcRepo.GetResourceAsync<UISearchResource>();
+                                       searchResult = await searchResource.Search(searchTerm, filter, skip, take, cancellationTokenSrc.Token);
+                                       foreach (var item in searchResult)
+                                       {
+                                           obs.OnNext(item);
+                                       }
 
-                    return Observable.Create<UISearchMetadata>(
-                          async obs =>
-                          {
-                              do
-                              {
-                                  try
-                                  {
-                                      searchResult = await searchResource.Search(searchTerm, filter, skip, take, cancellationTokenSrc.Token);
-                                      foreach (var item in searchResult)
-                                      {
-                                          obs.OnNext(item);
-                                      }
+                                       skip = skip + take;
+                                   }
+                                   catch
+                                   {
+                                       // TODO: logging
+                                       cancellationTokenSrc.Cancel();
+                                       searchResult = null;
+                                   }
+                               } while (!cancellationTokenSrc.IsCancellationRequested && searchResult.Count() == take);
 
-                                      skip = skip + take;
-                                  }
-                                  catch
-                                  {
-                                      // TODO: logging
-                                      cancellationTokenSrc.Cancel();
-                                      searchResult = null;
-                                  }
-                              } while (!cancellationTokenSrc.IsCancellationRequested && searchResult.Count() == take);
-
-                              obs.OnCompleted();
-                          }).ToEnumerable<UISearchMetadata>();
-                });
+                               obs.OnCompleted();
+                           }).ToEnumerable<UISearchMetadata>();
+                 });
         }
 
         /// <summary>
@@ -76,7 +75,7 @@ namespace Kudu.Core.SiteExtensions
         /// </summary>
         public static Task<Task<UIPackageMetadata>> GetLatestPackageById(this SourceRepository srcRepo, string packageId)
         {
-            return Task.Factory.StartNew<Task<UIPackageMetadata>>(
+            return Task.Run<Task<UIPackageMetadata>>(
                 async () =>
                 {
                     UIPackageMetadata latestPackage = null;
@@ -131,7 +130,7 @@ namespace Kudu.Core.SiteExtensions
                 async () =>
                 {
                     string tmpFolderToExtract = Path.Combine(localFolderPath, Guid.NewGuid().ToString().Substring(0, 8));
-                    
+
                     try
                     {
                         FileSystemHelpers.EnsureDirectory(tmpFolderToExtract);
