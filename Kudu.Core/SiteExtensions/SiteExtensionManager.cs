@@ -441,7 +441,7 @@ namespace Kudu.Core.SiteExtensions
             string physicalPath = isPreInstalled ? "%XDT_LATEST_EXTENSIONPATH%" : "%XDT_EXTENSIONPATH%";
             string template = null;
 
-            using (Stream stream = typeof(SiteExtensionManager).Assembly.GetManifestResourceStream("Kudu.Core.SiteExtensions." + _applicationHostFile + ".xml"))
+            Stream stream = typeof(SiteExtensionManager).Assembly.GetManifestResourceStream("Kudu.Core.SiteExtensions." + _applicationHostFile + ".xml");
             using (StreamReader reader = new StreamReader(stream))
             {
                 template = reader.ReadToEnd();
