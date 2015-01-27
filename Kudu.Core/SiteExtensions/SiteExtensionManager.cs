@@ -154,8 +154,8 @@ namespace Kudu.Core.SiteExtensions
             SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
             UIPackageMetadata package =
                 string.IsNullOrWhiteSpace(version) ?
-                    await await remoteRepo.GetLatestPackageById(id) :
-                    await await remoteRepo.GetPackageByIdentity(id, version);
+                    await remoteRepo.GetLatestPackageById(id) :
+                    await remoteRepo.GetPackageByIdentity(id, version);
 
             if (package == null)
             {
@@ -189,7 +189,7 @@ namespace Kudu.Core.SiteExtensions
                 return info;
             }
 
-            UIPackageMetadata package = await await this._localRepository.GetLatestPackageById(info.Id);
+            UIPackageMetadata package = await this._localRepository.GetLatestPackageById(info.Id);
             if (package == null)
             {
                 return null;
@@ -254,8 +254,8 @@ namespace Kudu.Core.SiteExtensions
                 UIPackageMetadata localPackage = null;
                 UIPackageMetadata repoPackage =
                     string.IsNullOrWhiteSpace(version) ?
-                        await await remoteRepo.GetLatestPackageById(id) :
-                        await await remoteRepo.GetPackageByIdentity(id, version);
+                        await remoteRepo.GetLatestPackageById(id) :
+                        await remoteRepo.GetPackageByIdentity(id, version);
 
                 if (repoPackage != null)
                 {
@@ -281,7 +281,7 @@ namespace Kudu.Core.SiteExtensions
                 SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
 
                 // copy content folder
-                await await remoteRepo.DownloadPackageToFolder(package.Identity, installationDirectory);
+                await remoteRepo.DownloadPackageToFolder(package.Identity, installationDirectory);
 
                 // If there is no xdt file, generate default.
                 GenerateApplicationHostXdt(installationDirectory, '/' + package.Identity.Id, isPreInstalled: false);
@@ -320,7 +320,7 @@ namespace Kudu.Core.SiteExtensions
                 throw;
             }
 
-            return await await _localRepository.GetLatestPackageById(package.Identity.Id);
+            return await _localRepository.GetLatestPackageById(package.Identity.Id);
         }
 
         private SiteExtensionInfo EnablePreInstalledExtension(SiteExtensionInfo info)
@@ -521,7 +521,7 @@ namespace Kudu.Core.SiteExtensions
         private async Task<SiteExtensionInfo> CheckRemotePackageLatestVersion(SiteExtensionInfo info, string feedUrl)
         {
             info.FeedUrl = feedUrl;
-            UIPackageMetadata localPackage = await await this._localRepository.GetLatestPackageById(info.Id);
+            UIPackageMetadata localPackage = await this._localRepository.GetLatestPackageById(info.Id);
 
             if (localPackage != null)
             {
@@ -565,7 +565,7 @@ namespace Kudu.Core.SiteExtensions
             {
                 // FindPackage gets back the latest version.
                 SourceRepository remoteRepo = GetRemoteRepository(info.FeedUrl);
-                UIPackageMetadata latestPackage = await await remoteRepo.GetLatestPackageById(info.Id);
+                UIPackageMetadata latestPackage = await remoteRepo.GetLatestPackageById(info.Id);
                 if (latestPackage != null)
                 {
                     NuGetVersion currentVersion = NuGetVersion.Parse(info.Version);

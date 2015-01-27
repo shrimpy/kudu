@@ -73,102 +73,90 @@ namespace Kudu.Core.SiteExtensions
         /// <summary>
         /// Query source repository for latest package base given package id
         /// </summary>
-        public static Task<Task<UIPackageMetadata>> GetLatestPackageById(this SourceRepository srcRepo, string packageId)
+        public static async Task<UIPackageMetadata> GetLatestPackageById(this SourceRepository srcRepo, string packageId)
         {
-            return Task.Run<Task<UIPackageMetadata>>(
-                async () =>
+            UIPackageMetadata latestPackage = null;
+            var metadataResource = await srcRepo.GetResourceAsync<UIMetadataResource>();
+            IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(packageId, true, true, CancellationToken.None);
+            foreach (var p in packages)
+            {
+                if (latestPackage == null ||
+                    latestPackage.Identity.Version < p.Identity.Version)
                 {
-                    UIPackageMetadata latestPackage = null;
-                    var metadataResource = await srcRepo.GetResourceAsync<UIMetadataResource>();
-                    IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(packageId, true, true, CancellationToken.None);
-                    foreach (var p in packages)
-                    {
-                        if (latestPackage == null ||
-                            latestPackage.Identity.Version < p.Identity.Version)
-                        {
-                            latestPackage = p;
-                        }
-                    }
+                    latestPackage = p;
+                }
+            }
 
-                    return latestPackage;
-                });
+            return latestPackage;
         }
 
         /// <summary>
         /// Query source repository for a package base given package id and version
         /// </summary>
-        public static Task<Task<UIPackageMetadata>> GetPackageByIdentity(this SourceRepository srcRepo, string packageId, string version)
+        public static async Task<UIPackageMetadata> GetPackageByIdentity(this SourceRepository srcRepo, string packageId, string version)
         {
-            return Task.Factory.StartNew<Task<UIPackageMetadata>>(
-                async () =>
-                {
-                    var metadataResource = await srcRepo.GetResourceAsync<UIMetadataResource>();
-                    IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(
-                        new NuGet.PackagingCore.PackageIdentity(packageId, NuGetVersion.Parse(version)),
-                        true,
-                        true,
-                        CancellationToken.None);
+            var metadataResource = await srcRepo.GetResourceAsync<UIMetadataResource>();
+            IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(
+                new NuGet.PackagingCore.PackageIdentity(packageId, NuGetVersion.Parse(version)),
+                true,
+                true,
+                CancellationToken.None);
 
-                    UIPackageMetadata[] packagesArray = packages.ToArray<UIPackageMetadata>();
-                    if (packagesArray.Length == 0)
-                    {
-                        return null;
-                    }
-                    else
-                    {
-                        return packagesArray[0];
-                    }
-                });
+            UIPackageMetadata[] packagesArray = packages.ToArray<UIPackageMetadata>();
+            if (packagesArray.Length == 0)
+            {
+                return null;
+            }
+            else
+            {
+                return packagesArray[0];
+            }
         }
 
         /// <summary>
         /// Helper function to download package from given url and place content (only 'content' folder from package) to given folder
         /// </summary>
-        public static Task<Task> DownloadPackageToFolder(this SourceRepository srcRepo, PackageIdentity identity, string localFolderPath)
+        public static async Task DownloadPackageToFolder(this SourceRepository srcRepo, PackageIdentity identity, string localFolderPath)
         {
-            return Task.Factory.StartNew<Task>(
-                async () =>
+            string tmpFolderToExtract = Path.Combine(localFolderPath, Guid.NewGuid().ToString().Substring(0, 8));
+
+            try
+            {
+                FileSystemHelpers.EnsureDirectory(tmpFolderToExtract);
+
+                var downloadResource = await srcRepo.GetResourceAsync<DownloadResource>();
+                using (Stream downloadStream = await downloadResource.GetStream(identity, CancellationToken.None))
+                using (ZipArchive zip = new ZipArchive(downloadStream))
                 {
-                    string tmpFolderToExtract = Path.Combine(localFolderPath, Guid.NewGuid().ToString().Substring(0, 8));
+                    zip.Extract(tmpFolderToExtract);
 
-                    try
+                    // kudu only care about things under "content" folder
+                    string contentFolder = FileSystemHelpers.GetDirectories(tmpFolderToExtract).FirstOrDefault(p => p.EndsWith("\\content"));
+                    if (!string.IsNullOrWhiteSpace(contentFolder))
                     {
-                        FileSystemHelpers.EnsureDirectory(tmpFolderToExtract);
+                        string[] entries = FileSystemHelpers.GetFileSystemEntries(contentFolder);
 
-                        var downloadResource = await srcRepo.GetResourceAsync<DownloadResource>();
-                        using (Stream downloadStream = await downloadResource.GetStream(identity, CancellationToken.None))
-                        using (ZipArchive zip = new ZipArchive(downloadStream))
+                        foreach (string entry in entries)
                         {
-                            zip.Extract(tmpFolderToExtract);
-
-                            // kudu only care about things under "content" folder
-                            string contentFolder = FileSystemHelpers.GetDirectories(tmpFolderToExtract).FirstOrDefault(p => p.EndsWith("\\content"));
-                            if (!string.IsNullOrWhiteSpace(contentFolder))
+                            FileAttributes fileAttr = FileSystemHelpers.GetAttributes(entry);
+                            if ((fileAttr & FileAttributes.Directory) == FileAttributes.Directory)
                             {
-                                string[] entries = FileSystemHelpers.GetFileSystemEntries(contentFolder);
-
-                                foreach (string entry in entries)
-                                {
-                                    FileAttributes fileAttr = FileSystemHelpers.GetAttributes(entry);
-                                    if ((fileAttr & FileAttributes.Directory) == FileAttributes.Directory)
-                                    {
-                                        DirectoryInfo dirInfo = new DirectoryInfo(entry);
-                                        FileSystemHelpers.MoveDirectory(entry, Path.Combine(localFolderPath, dirInfo.Name));
-                                    }
-                                    else
-                                    {
-                                        FileInfo fileInfo = new FileInfo(entry);
-                                        FileSystemHelpers.MoveFile(entry, Path.Combine(localFolderPath, fileInfo.Name));
-                                    }
-                                }
+                                DirectoryInfo dirInfo = new DirectoryInfo(entry);
+                                FileSystemHelpers.MoveDirectory(entry, Path.Combine(localFolderPath, dirInfo.Name));
+                            }
+                            else
+                            {
+                                FileInfo fileInfo = new FileInfo(entry);
+                                FileSystemHelpers.MoveFile(entry, Path.Combine(localFolderPath, fileInfo.Name));
                             }
                         }
                     }
-                    finally
-                    {
-                        FileSystemHelpers.DeleteDirectorySafe(tmpFolderToExtract);
-                    }
-                });
+                }
+            }
+            finally
+            {
+                FileSystemHelpers.DeleteDirectorySafe(tmpFolderToExtract);
+            }
         }
     }
 }
