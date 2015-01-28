@@ -13,6 +13,11 @@
         string SSHKeyPath { get; }
         string TempPath { get; }
         string ScriptPath { get; }
+
+        /// <summary>
+        /// Path to Kudu SCM site binary folder
+        /// </summary>
+        string BinPath { get; } 
         string NodeModulesPath { get; }
         string LogFilesPath { get; }            // e.g. /logfiles
         string ApplicationLogFilesPath { get; } // e.g. /logfiles/application

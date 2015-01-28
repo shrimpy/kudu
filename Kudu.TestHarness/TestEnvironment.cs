@@ -123,5 +123,12 @@ namespace Kudu.TestHarness
             get;
             set;
         }
+
+        /// <inheritdoc />
+        public string BinPath
+        {
+            get;
+            set;
+        }
     }
 }

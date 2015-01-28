@@ -108,7 +108,7 @@ namespace Kudu.Core.SiteExtensions
             _baseUrl = context.Request.Url == null ? String.Empty : context.Request.Url.GetLeftPart(UriPartial.Authority).TrimEnd('/');
 
             var aggregateCatalog = new AggregateCatalog();
-            var directoryCatalog = new DirectoryCatalog(@"E:\kudu\Kudu.Core\bin\Debug", "NuGet.Client*.dll");
+            var directoryCatalog = new DirectoryCatalog(environment.BinPath, "NuGet.Client*.dll");
             aggregateCatalog.Catalogs.Add(directoryCatalog);
             this._container = new CompositionContainer(aggregateCatalog);
             this._container.ComposeParts(this);
@@ -127,7 +127,6 @@ namespace Kudu.Core.SiteExtensions
         public async Task<IEnumerable<SiteExtensionInfo>> GetRemoteExtensions(string filter, bool allowPrereleaseVersions, string feedUrl)
         {
             var extensions = new List<SiteExtensionInfo>(GetPreInstalledExtensions(filter, showEnabledOnly: false));
-
             SourceRepository remoteRepo = this.GetRemoteRepository(feedUrl);
 
             IEnumerable<UISearchMetadata> packages =
@@ -668,171 +667,6 @@ namespace Kudu.Core.SiteExtensions
             {
                 this._container.Dispose();
             }
-        }
-
-        public T GetResource<T>(string feedEndpoint)
-        {
-            IEnumerable<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>> providers = this._container.GetExports<INuGetResourceProvider, INuGetResourceProviderMetadata>();
-            NuGet.Configuration.PackageSource source = new NuGet.Configuration.PackageSource(feedEndpoint);
-            var repo = new SourceRepository(source, providers);
-            var _providerCache = Init_DELETE_ME(providers);
-
-            try
-            {
-                Type resourceType = typeof(T);
-                INuGetResource resource = null;
-                
-                Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>[] possible = null;
-
-                if (_providerCache.TryGetValue(resourceType, out possible))
-                {
-                    foreach (var provider in possible)
-                    {
-                        if (provider.Value.TryCreate(repo, out resource))
-                        {
-                            // found
-                            break;
-                        }
-                    }
-                }
-
-                return resource == null ? default(T) : (T)resource;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                return default(T);
-            }
-        }
-
-        private static Dictionary<Type, Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>[]>
-            Init_DELETE_ME(IEnumerable<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>> providers)
-        {
-            var cache = new Dictionary<Type, Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>[]>();
-
-            foreach (var group in providers.GroupBy(p => p.Metadata.ResourceType))
-            {
-                cache.Add(group.Key, Sort(group).ToArray());
-            }
-
-            return cache;
-        }
-
-        private static Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>[]
-            Sort(IEnumerable<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>> group)
-        {
-            // initial ordering to help make this deterministic 
-            var items = new List<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>>(
-                group.OrderBy(e => e.Metadata.Name).ThenBy(e => e.Metadata.After.Count()).ThenBy(e => e.Metadata.Before.Count()));
-
-
-            ProviderComparer comparer = new ProviderComparer();
-
-            var ordered = new Queue<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>>();
-
-            // List.Sort does not work when lists have unsolvable gaps, which can occur here
-            while (items.Count > 0)
-            {
-                Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata> best = items[0];
-
-                for (int i = 1; i < items.Count; i++)
-                {
-                    if (comparer.Compare(items[i], best) < 0)
-                    {
-                        best = items[i];
-                    }
-                }
-
-                items.Remove(best);
-                ordered.Enqueue(best);
-            }
-
-            return ordered.ToArray();
-        }
-    }
-
-    /// <summary>
-    /// An imperfect sort for provider before/after
-    /// </summary>
-    internal class ProviderComparer : IComparer<Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>>
-    {
-
-        public ProviderComparer()
-        {
-
-        }
-
-        // higher goes last
-        public int Compare(Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata> providerA, Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata> providerB)
-        {
-            INuGetResourceProviderMetadata x = providerA.Metadata;
-            INuGetResourceProviderMetadata y = providerB.Metadata;
-
-            if (StringComparer.Ordinal.Equals(x.Name, y.Name))
-            {
-                return 0;
-            }
-
-            // empty names go last
-            if (String.IsNullOrEmpty(x.Name))
-            {
-                return 1;
-            }
-
-            if (String.IsNullOrEmpty(y.Name))
-            {
-                return -1;
-            }
-
-            // check x 
-            if (x.Before.Contains(y.Name, StringComparer.Ordinal))
-            {
-                return -1;
-            }
-
-            if (x.After.Contains(y.Name, StringComparer.Ordinal))
-            {
-                return 1;
-            }
-
-            // check y
-            if (y.Before.Contains(x.Name, StringComparer.Ordinal))
-            {
-                return 1;
-            }
-
-            if (y.After.Contains(x.Name, StringComparer.Ordinal))
-            {
-                return -1;
-            }
-
-            // compare with the known names
-            if ((x.Before.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal) || (x.After.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal)))
-                && !(y.Before.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal) || (y.After.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal))))
-            {
-                return 1;
-            }
-
-            if ((y.Before.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal) || (y.After.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal)))
-                && !(x.Before.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal) || (x.After.Contains(NuGetResourceProviderPositions.Last, StringComparer.Ordinal))))
-            {
-                return -1;
-            }
-
-            if ((x.Before.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal) || (x.After.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal)))
-                && !(y.Before.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal) || (y.After.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal))))
-            {
-                return -1;
-            }
-
-            if ((y.Before.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal) || (y.After.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal)))
-                && !(x.Before.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal) || (x.After.Contains(NuGetResourceProviderPositions.First, StringComparer.Ordinal))))
-            {
-                return 1;
-            }
-
-            // give up and sort based on the name
-            return StringComparer.Ordinal.Compare(x.Name, y.Name);
         }
     }
 }

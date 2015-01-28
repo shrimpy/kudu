@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,54 +19,19 @@ namespace Kudu.Core.SiteExtensions
     public static class FeedExtensions
     {
         /// <summary>
-        /// Query all result, will include pre-released package by default
+        /// Query result by search term, will include pre-released package by default
         /// </summary>
-        public static Task<IEnumerable<UISearchMetadata>> Search(this SourceRepository srcRepo, string searchTerm, SearchFilter filter = null)
+        public static async Task<IEnumerable<UISearchMetadata>> Search(this SourceRepository srcRepo, string searchTerm, SearchFilter filter = null, int skip = 0, int take = 1000)
         {
-            return Task.Run<IEnumerable<UISearchMetadata>>(
-                 () =>
-                 {
-                     int skip = 0;
-                     int take = 1000;
+            // always include pre-release package
+            if (filter == null)
+            {
+                filter = new SearchFilter();
+            }
 
-                     var cancellationTokenSrc = new CancellationTokenSource();
-                     IEnumerable<UISearchMetadata> searchResult = null;
-
-                     // always include pre-release package
-                     if (filter == null)
-                     {
-                         filter = new SearchFilter();
-                     }
-
-                     filter.IncludePrerelease = true;
-
-                     return Observable.Create<UISearchMetadata>(
-                           async obs =>
-                           {
-                               do
-                               {
-                                   try
-                                   {
-                                       var searchResource = await srcRepo.GetResourceAsync<UISearchResource>();
-                                       searchResult = await searchResource.Search(searchTerm, filter, skip, take, cancellationTokenSrc.Token);
-                                       foreach (var item in searchResult)
-                                       {
-                                           obs.OnNext(item);
-                                       }
-
-                                       skip = skip + take;
-                                   }
-                                   catch
-                                   {
-                                       // TODO: logging
-                                       cancellationTokenSrc.Cancel();
-                                       searchResult = null;
-                                   }
-                               } while (!cancellationTokenSrc.IsCancellationRequested && searchResult.Count() == take);
-
-                               obs.OnCompleted();
-                           }).ToEnumerable<UISearchMetadata>();
-                 });
+            filter.IncludePrerelease = true;
+            var searchResource = await srcRepo.GetResourceAsync<UISearchResource>();
+            return await searchResource.Search(searchTerm, filter, skip, take, CancellationToken.None);
         }
 
         /// <summary>
@@ -96,21 +60,9 @@ namespace Kudu.Core.SiteExtensions
         public static async Task<UIPackageMetadata> GetPackageByIdentity(this SourceRepository srcRepo, string packageId, string version)
         {
             var metadataResource = await srcRepo.GetResourceAsync<UIMetadataResource>();
-            IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(
-                new NuGet.PackagingCore.PackageIdentity(packageId, NuGetVersion.Parse(version)),
-                true,
-                true,
-                CancellationToken.None);
-
-            UIPackageMetadata[] packagesArray = packages.ToArray<UIPackageMetadata>();
-            if (packagesArray.Length == 0)
-            {
-                return null;
-            }
-            else
-            {
-                return packagesArray[0];
-            }
+            IEnumerable<UIPackageMetadata> packages = await metadataResource.GetMetadata(packageId, true, true, CancellationToken.None);
+            NuGetVersion expectedVersion = NuGetVersion.Parse(version);
+            return packages.FirstOrDefault((p) => p.Identity.Version.Equals(expectedVersion));
         }
 
         /// <summary>
